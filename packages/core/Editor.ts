@@ -17,6 +17,8 @@ class Editor extends EventEmitter {
   private canvas: fabric.Canvas | null = null;
   contextMenu: ContextMenu | null = null;
   [key: string]: any;
+  // 全局长度单位（默认 px）
+  private unit: 'px' | 'mm' = 'px';
   private pluginMap: {
     [propName: string]: IPluginTempl;
   } = {};
@@ -48,6 +50,28 @@ class Editor extends EventEmitter {
 
   get fabricCanvas() {
     return this.canvas;
+  }
+
+  // 单位 API
+  getUnit() {
+    return this.unit;
+  }
+
+  /**
+   * 设置全局长度单位，触发 unitChange 事件
+   */
+  setUnit(nextUnit: 'px' | 'mm') {
+    if (this.unit === nextUnit) return;
+    this.unit = nextUnit;
+    this.emit('unitChange', this.unit);
+  }
+
+  // 像素与毫米转换（基于 96DPI）
+  pxToMm(px: number) {
+    return (px * 25.4) / 96;
+  }
+  mmToPx(mm: number) {
+    return (mm * 96) / 25.4;
   }
 
   // 引入组件
@@ -111,7 +135,9 @@ class Editor extends EventEmitter {
           // eslint-disable-next-line prefer-rest-params
           const result = hook.apply(plugin, [...arguments]);
           // hook 兼容非 Promise 返回值
-          return (result as any) instanceof Promise ? result : Promise.resolve(result);
+          const promise: Promise<any> =
+            (result as any) instanceof Promise ? (result as Promise<any>) : Promise.resolve(result as any);
+          return promise as Promise<void>;
         });
       }
     });

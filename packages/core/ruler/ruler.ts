@@ -15,6 +15,12 @@ export interface RulerOptions {
   canvas: Canvas;
 
   /**
+   * 单位（仅影响标尺文字展示）
+   * @default 'px'
+   */
+  unit?: 'px' | 'mm';
+
+  /**
    * 标尺宽高
    * @default 20
    */
@@ -66,6 +72,11 @@ class CanvasRuler {
    * 配置
    */
   public options: Required<RulerOptions>;
+
+  /**
+   * 当前单位
+   */
+  private unit: 'px' | 'mm' = 'px';
 
   /**
    * 标尺起始点
@@ -124,11 +135,13 @@ class CanvasRuler {
         borderColor: '#ddd',
         highlightColor: '#007fff',
         textColor: '#888',
+        unit: 'px',
       },
       _options
     );
 
     this.ctx = this.options.canvas.getContext();
+    this.unit = this.options.unit || 'px';
 
     fabric.util.object.extend(this.options.canvas, {
       ruler: this,
@@ -139,6 +152,26 @@ class CanvasRuler {
     if (this.options.enabled) {
       this.enable();
     }
+  }
+
+  // 设置单位
+  public setUnit(unit: 'px' | 'mm') {
+    if (this.unit === unit) return;
+    this.unit = unit;
+    this.render();
+  }
+
+  // 单位转换：像素 -> 显示单位数值
+  private formatValueByUnit(pxValue: number) {
+    if (this.unit === 'px') return pxValue;
+    // 96 DPI -> 1in = 25.4mm -> px to mm
+    return (pxValue * 25.4) / 96;
+  }
+
+  private formatLabel(pxValue: number) {
+    const val = this.formatValueByUnit(pxValue);
+    // 为保持清晰，毫米保留 1 位小数
+    return this.unit === 'px' ? String(Math.round(val)) : String(Math.round(val * 10) / 10);
   }
 
   // 销毁
@@ -290,7 +323,7 @@ class CanvasRuler {
     // 标尺文字显示
     for (let i = 0; i + startOffset <= Math.ceil(unitLength); i += gap) {
       const position = (startOffset + i) * zoom;
-      const textValue = startValue + i + '';
+      const textValue = this.formatLabel(startValue + i);
       const textLength = (10 * textValue.length) / 4;
       const textX = isHorizontal
         ? position - textLength - 1
@@ -450,15 +483,12 @@ class CanvasRuler {
       const rect: HighlightRect = obj.getBoundingRect(false, true);
       // 如果是分组单独计算坐标
       if (obj.group) {
+        const baseGroup: any = obj.group;
         const group = {
-          top: 0,
-          left: 0,
-          width: 0,
-          height: 0,
-          scaleX: 1,
-          scaleY: 1,
-          ...obj.group,
-        };
+          ...baseGroup,
+          scaleX: baseGroup?.scaleX ?? 1,
+          scaleY: baseGroup?.scaleY ?? 1,
+        } as any;
         // 计算矩形坐标
         rect.width *= group.scaleX;
         rect.height *= group.scaleY;

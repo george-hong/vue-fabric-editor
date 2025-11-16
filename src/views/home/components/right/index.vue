@@ -11,6 +11,7 @@ import dele from '@/components/del.vue';
 
 import bgBar from '@/components/bgBar.vue';
 import setSize from '@/components/setSize.vue';
+import unitSwitch from '@/components/unitSwitch.vue';
 import replaceImg from '@/components/replaceImg.vue';
 import filters from '@/components/filters.vue';
 import imgStroke from '@/components/imgStroke.vue';
@@ -49,6 +50,7 @@ const switchAttrBar = () => {
     <div style="padding-top: 10px">
       <!-- 未选择元素时 展示背景设置 -->
       <div v-show="!mixinState.mSelectMode">
+        <unit-switch></unit-switch>
         <set-size></set-size>
         <bg-bar></bg-bar>
       </div>

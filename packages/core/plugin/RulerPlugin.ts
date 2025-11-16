@@ -45,7 +45,11 @@ class RulerPlugin implements IPluginTempl {
   }
 
   init() {
-    this.ruler = initRuler(this.canvas);
+    this.ruler = initRuler(this.canvas, { unit: this.editor.getUnit?.() || 'px' });
+    // 监听全局单位变化，更新标尺展示
+    this.editor.on?.('unitChange', (unit: 'px' | 'mm') => {
+      this.ruler?.setUnit?.(unit);
+    });
   }
 
   hideGuideline() {

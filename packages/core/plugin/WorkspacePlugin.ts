@@ -48,8 +48,8 @@ class WorkspacePlugin implements IPluginTempl {
   constructor(public canvas: fabric.Canvas, public editor: IEditor) {
     this.workspace = null;
     this.init({
-      width: 900,
-      height: 1200,
+      width: 114,
+      height: 114,
     });
     this.zoomRatio = 0.85;
   }

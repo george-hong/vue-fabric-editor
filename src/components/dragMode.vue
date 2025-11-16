@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
 <style scoped lang="less">
 .box {
   position: absolute;
-  right: 193px;
+  right: 250px;
   bottom: 14px;
 }
 </style>

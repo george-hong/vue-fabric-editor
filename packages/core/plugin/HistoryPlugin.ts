@@ -52,12 +52,12 @@ class HistoryPlugin implements IPluginTempl {
     });
 
     // 页面离开提示
-    window.addEventListener('beforeunload', (e) => {
-      const { undoCount } = this.getState();
-      if (undoCount > 0) {
-        (e || window.event).returnValue = '确认离开';
-      }
-    });
+    // window.addEventListener('beforeunload', (e) => {
+    //   const { undoCount } = this.getState();
+    //   if (undoCount > 0) {
+    //     (e || window.event).returnValue = '确认离开';
+    //   }
+    // });
   }
 
   // 获取当前状态

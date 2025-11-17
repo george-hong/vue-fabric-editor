@@ -87,8 +87,8 @@ const getObjectAttr = (e) => {
   if (e && e.target && e.target !== activeObject) return;
   if (activeObject && isMatchType) {
     baseAttr.opacity = activeObject.get('opacity') * 100;
-    baseAttr.left = activeObject.get('left');
-    baseAttr.top = activeObject.get('top');
+    baseAttr.left = canvasEditor.getSizeByUnit(activeObject.get('left'));
+    baseAttr.top = canvasEditor.getSizeByUnit(activeObject.get('top'));
     baseAttr.angle = activeObject.get('angle') || 0;
   }
 };
@@ -109,6 +109,11 @@ const changeCommon = (key, value) => {
       canvasEditor.canvas.renderAll();
       return;
     }
+    if (key === 'left' || key === 'top') {
+      activeObject && activeObject.set(key, canvasEditor.getCurrentSizeByPx(value));
+      canvasEditor.canvas.renderAll();
+      return;
+    }
     activeObject && activeObject.set(key, value);
     canvasEditor.canvas.renderAll();
   }
@@ -123,6 +128,7 @@ onMounted(() => {
   getObjectAttr();
   canvasEditor.on('selectCancel', selectCancel);
   canvasEditor.on('selectOne', getObjectAttr);
+  canvasEditor.on('unitChange', getObjectAttr);
   canvasEditor.canvas.on('object:modified', getObjectAttr);
 });
 

@@ -43,7 +43,7 @@ export default class LengthConvert {
    * @param {object} [options] - 可选参数 { direct: true } 是否允许非整数
    * @returns {number} 像素值
    */
-  static mmToPx(mm, dpi, options) {
+  static mmToPx(mm: number | string, dpi?: number, options?: { direct?: boolean }) {
     const normalizedMm = this.normalizeNumber(mm, '毫米值');
     const currentDpi = this.getValidDpi(dpi);
     const directValue = (normalizedMm * currentDpi) / this.CONSTANTS.INCH_TO_MM;

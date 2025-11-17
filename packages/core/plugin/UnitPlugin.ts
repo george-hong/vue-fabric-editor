@@ -10,7 +10,7 @@ import { fabric } from 'fabric';
 import type { IEditor, IPluginTempl } from '@kuaitu/core';
 import LengthConvert from '@/utils/lengthConvert';
 
-type IPlugin = Pick<UnitPlugin, 'getUnit' | 'setUnit' | 'getSizeByUnit'>;
+type IPlugin = Pick<UnitPlugin, 'getUnit' | 'setUnit' | 'getSizeByUnit' | 'getCurrentSizeByPx'>;
 
 type TUnit = 'px' | 'mm';
 
@@ -22,7 +22,7 @@ declare module '@kuaitu/core' {
 class UnitPlugin implements IPluginTempl {
   static pluginName = 'UnitPlugin';
   //  static events = ['sizeChange'];
-  static apis = ['getUnit', 'setUnit', 'getSizeByUnit'];
+  static apis = ['getUnit', 'setUnit', 'getSizeByUnit', 'getCurrentSizeByPx'];
   unit: TUnit = 'px';
   constructor(public canvas: fabric.Canvas, public editor: IEditor) {
     this.init();
@@ -60,6 +60,15 @@ class UnitPlugin implements IPluginTempl {
       return LengthConvert.pxToMm(px);
     }
     return Number(px);
+  }
+
+  getCurrentSizeByPx(px: number | string) {
+    switch (this.unit) {
+      case 'mm':
+        return LengthConvert.mmToPx(px);
+      default:
+        return px;
+    }
   }
 
   destroy() {

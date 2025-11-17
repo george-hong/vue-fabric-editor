@@ -6,6 +6,7 @@
  * @Description: 类型文件
  */
 import Editor from './Editor';
+import UnitPlugin from './plugin/UnitPlugin';
 import DringPlugin from './plugin/DringPlugin';
 import AlignGuidLinePlugin from './plugin/AlignGuidLinePlugin';
 import ControlsPlugin from './plugin/ControlsPlugin';
@@ -42,6 +43,7 @@ import AddBaseTypePlugin from './plugin/AddBaseTypePlugin';
 
 const AllEditor = {
   Editor,
+  UnitPlugin,
   DringPlugin,
   AlignGuidLinePlugin,
   ControlsPlugin,

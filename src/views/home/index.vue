@@ -40,6 +40,7 @@ import { fabric } from 'fabric';
 
 import Editor, {
   IEditor,
+  UnitPlugin,
   DringPlugin,
   AlignGuidLinePlugin,
   ControlsPlugin,
@@ -99,6 +100,7 @@ onMounted(() => {
   // 初始化编辑器
   canvasEditor.init(canvas);
   canvasEditor
+    .use(UnitPlugin)
     .use(DringPlugin)
     .use(PolygonModifyPlugin)
     .use(AlignGuidLinePlugin)

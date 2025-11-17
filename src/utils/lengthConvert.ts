@@ -1,5 +1,5 @@
 export default class LengthConvert {
-  static devicePixelRatio = window.devicePixelRatio
+  static devicePixelRatio = window.devicePixelRatio;
   static _deviceDPI;
   static CONSTANTS = {
     INCH_TO_MM: 25.4,
@@ -17,23 +17,19 @@ export default class LengthConvert {
   static getDeviceDPI() {
     if (!this._deviceDPI) {
       try {
-        const element = document.createElement("div");
-        element.style.width = "1in";
-        element.style.height = "0";
-        element.style.position = "absolute";
-        element.style.visibility = "hidden";
+        const element = document.createElement('div');
+        element.style.width = '1in';
+        element.style.height = '0';
+        element.style.position = 'absolute';
+        element.style.visibility = 'hidden';
 
         document.body.appendChild(element);
         const cssPixels = element.offsetWidth;
         document.body.removeChild(element);
 
-        this._deviceDPI =
-          cssPixels * window.devicePixelRatio || this.CONSTANTS.DEFAULT_DPI;
+        this._deviceDPI = cssPixels * window.devicePixelRatio || this.CONSTANTS.DEFAULT_DPI;
       } catch (error) {
-        console.warn(
-          "无法获取设备DPI，使用默认值:",
-          this.CONSTANTS.DEFAULT_DPI
-        );
+        console.warn('无法获取设备DPI，使用默认值:', this.CONSTANTS.DEFAULT_DPI);
         this._deviceDPI = this.CONSTANTS.DEFAULT_DPI;
       }
     }
@@ -42,50 +38,87 @@ export default class LengthConvert {
 
   /**
    * 毫米转像素
+   * @param {number|string} mm - 毫米值
+   * @param {number|string} [dpi] - DPI值
+   * @param {object} [options] - 可选参数 { direct: true } 是否允许非整数
+   * @returns {number} 像素值
    */
   static mmToPx(mm, dpi, options) {
-    this.validateNumber(mm, "毫米值");
+    const normalizedMm = this.normalizeNumber(mm, '毫米值');
     const currentDpi = this.getValidDpi(dpi);
-    const directValue = (mm * currentDpi) / this.CONSTANTS.INCH_TO_MM;
+    const directValue = (normalizedMm * currentDpi) / this.CONSTANTS.INCH_TO_MM;
     return options?.direct ? directValue : Math.ceil(directValue);
   }
 
   /**
    * 像素转毫米
+   * @param {number|string} px - 像素值
+   * @param {number|string} [dpi] - DPI值
+   * @param {object} [options] - 可选参数
+   * @returns {number} 毫米值
    */
-  static pxToMm(px, dpi, options) {
-    this.validateNumber(px, "像素值");
+  static pxToMm(px: number | string, dpi?, options?) {
+    const normalizedPx = this.normalizeNumber(px, '像素值');
     const currentDpi = this.getValidDpi(dpi);
-    return (px * this.CONSTANTS.INCH_TO_MM) / currentDpi;
+    return (normalizedPx * this.CONSTANTS.INCH_TO_MM) / currentDpi;
   }
 
   /**
    * 批量转换毫米到像素
    */
   static mmToPxBatch(mmArray, dpi) {
-    return mmArray.map((mm) => this.mmToPx(mm, dpi));
+    return mmArray.map((mm) => this.mmToPx(mm, dpi, undefined));
   }
 
   /**
    * 批量转换像素到毫米
    */
   static pxToMmBatch(pxArray, dpi) {
-    return pxArray.map((px) => this.pxToMm(px, dpi));
+    return pxArray.map((px) => this.pxToMm(px, dpi, undefined));
   }
 
   // 私有方法
-  static getValidDpi(dpi) {
-    const validDpi = dpi || this.getDeviceDPI();
-    if (validDpi <= 0) {
-      throw new Error("DPI值必须大于0");
+  static getValidDpi(dpi?: number) {
+    if (dpi !== undefined && dpi !== null) {
+      const normalizedDpi = this.normalizeNumber(dpi, 'DPI值');
+      if (normalizedDpi <= 0) {
+        throw new Error('DPI值必须大于0');
+      }
+      return normalizedDpi;
     }
-    return validDpi;
+    const deviceDpi = this.getDeviceDPI();
+    if (deviceDpi <= 0) {
+      throw new Error('DPI值必须大于0');
+    }
+    return deviceDpi;
+  }
+
+  /**
+   * 规范化数字输入（支持字符串和数字）
+   * @param {number|string} value - 输入值
+   * @param {string} name - 参数名称（用于错误提示）
+   * @returns {number} 规范化后的数字
+   */
+  static normalizeNumber(value, name) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed === '') {
+        throw new Error(`${name}不能为空字符串`);
+      }
+      const num = Number(trimmed);
+      if (isNaN(num)) {
+        throw new Error(`${name}必须是有效数字，无法转换: "${value}"`);
+      }
+      return num;
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+      throw new Error(`${name}必须是有效数字`);
+    }
+    return value;
   }
 
   static validateNumber(value, name) {
-    if (typeof value !== "number" || isNaN(value)) {
-      throw new Error(`${name}必须是有效数字`);
-    }
+    this.normalizeNumber(value, name);
   }
 
   // 重置设备DPI缓存（用于响应设备变化）
@@ -95,28 +128,28 @@ export default class LengthConvert {
 
   /**
    * pt（磅）转 px（像素）
-   * @param {number} pt - 磅值
+   * @param {number|string} pt - 磅值
    * @param {object} [options] - 可选参数 { direct: true } 是否允许非整数
    * @returns {number} 像素值
    */
   static ptToPx(pt, options) {
-    this.validateNumber(pt, "磅值");
-    const currentDpi = this.getValidDpi();
+    const normalizedPt = this.normalizeNumber(pt, '磅值');
+    const currentDpi = this.getValidDpi(undefined);
     // 1英寸 = 72pt，所以 px = pt * dpi / 72
-    const directValue = (pt * currentDpi) / 72;
+    const directValue = (normalizedPt * currentDpi) / 72;
     return options?.direct ? directValue : Math.ceil(directValue);
   }
 
   /**
    * px（像素）转 pt（磅）
-   * @param {number} px - 像素值
+   * @param {number|string} px - 像素值
    * @returns {number} 磅值
    */
   static pxToPt(px) {
-    this.validateNumber(px, "像素值");
-    const currentDpi = this.getValidDpi();
+    const normalizedPx = this.normalizeNumber(px, '像素值');
+    const currentDpi = this.getValidDpi(undefined);
     // 1英寸 = 72pt，所以 pt = px * 72 / dpi
-    return (px * 72) / currentDpi;
+    return (normalizedPx * 72) / currentDpi;
   }
 
   /**
@@ -138,11 +171,15 @@ export default class LengthConvert {
     return pxArray.map((px) => this.pxToPt(px));
   }
 
-
+  /**
+   * 毫米转磅（pt）
+   * @param {number|string} mm - 毫米值
+   * @returns {number} 磅值
+   */
   static mmToPt(mm) {
     // 毫米转磅（pt）
     // 1英寸 = 25.4毫米，1英寸 = 72pt，所以 1毫米 = 72/25.4 pt
-    this.validateNumber(mm, "毫米值");
-    return (mm * 72) / 25.4;
+    const normalizedMm = this.normalizeNumber(mm, '毫米值');
+    return (normalizedMm * 72) / 25.4;
   }
 }

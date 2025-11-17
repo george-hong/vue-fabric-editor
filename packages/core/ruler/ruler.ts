@@ -372,11 +372,15 @@ class CanvasRuler {
         }
 
         // 获取数字的值
-        const roundFactor = (x: number) => Math.round(x / zoom + startCalibration) + '';
-        const leftTextVal = this.options.editor.getSizeByCurrentUnit(roundFactor(isHorizontal ? rect.left : rect.top));
-        console.log('isHorizontal ? rect.left + rect.width : rect.top + rect.height', isHorizontal ? rect.left + rect.width : rect.top + rect.height, this.options.editor.getSizeByCurrentUnit(isHorizontal ? rect.left + rect.width : rect.top + rect.height))
-        const rightTextVal = this.options.editor.getSizeByCurrentUnit(
-          roundFactor(isHorizontal ? rect.left + rect.width : rect.top + rect.height)
+        const computedPosition = (position: number) => {
+          const value = this.options.editor.getSizeByUnit(
+            Math.round(position / zoom + startCalibration) + ''
+          );
+          return Math.round(value * 10) / 10;
+        };
+        const leftTextVal = computedPosition(isHorizontal ? rect.left : rect.top);
+        const rightTextVal = computedPosition(
+          isHorizontal ? rect.left + rect.width : rect.top + rect.height
         );
 
         const isSameText = leftTextVal === rightTextVal;

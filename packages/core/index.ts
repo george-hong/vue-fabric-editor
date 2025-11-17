@@ -6,6 +6,7 @@
  * @Description: 核心入口文件
  */
 import Editor from './Editor';
+export { default as UnitPlugin } from './plugin/UnitPlugin';
 export { default as DringPlugin } from './plugin/DringPlugin';
 export { default as AlignGuidLinePlugin } from './plugin/AlignGuidLinePlugin';
 export { default as ControlsPlugin } from './plugin/ControlsPlugin';

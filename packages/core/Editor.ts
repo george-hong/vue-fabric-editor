@@ -53,33 +53,6 @@ class Editor extends EventEmitter {
     return this.canvas;
   }
 
-  // 单位 API
-  getUnit() {
-    return this.unit;
-  }
-
-  /**
-   * 设置全局长度单位，触发 unitChange 事件
-   */
-  setUnit(nextUnit: 'px' | 'mm') {
-    if (this.unit === nextUnit) return;
-    this.unit = nextUnit;
-    this.emit('unitChange', this.unit);
-  }
-
-  // 像素与毫米转换
-  pxToMm(px: number) {
-    return LengthConvert.pxToMm(px);
-  }
-  mmToPx(mm: number) {
-    return LengthConvert.mmToPx(mm);
-  }
-
-  getSizeByCurrentUnit(size: number) {
-    if (this.unit === 'mm') return LengthConvert.pxToMm(size)
-    return size
-  }
-
   // 引入组件
   use(plugin: IPluginTempl, options?: IPluginOption) {
     if (this._checkPlugin(plugin) && this.canvas) {

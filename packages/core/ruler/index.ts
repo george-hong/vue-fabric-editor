@@ -2,9 +2,10 @@ import type { Canvas } from 'fabric/fabric-impl';
 import { fabric } from 'fabric';
 import CanvasRuler, { RulerOptions } from './ruler';
 
-function initRuler(canvas: Canvas, options?: RulerOptions) {
+function initRuler(canvas: Canvas, editor: IEditor, options?: RulerOptions) {
   const ruler = new CanvasRuler({
     canvas,
+    editor,
     ...options,
   });
 

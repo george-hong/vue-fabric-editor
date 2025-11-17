@@ -117,7 +117,7 @@ const addText = (event) => {
   cancelDraw();
   const text = new fabric.IText(t('everything_is_fine'), {
     ...defaultPosition,
-    fontSize: 80,
+    fontSize: 12,
     fill: '#000000FF',
   });
 
@@ -129,8 +129,8 @@ const addTextBox = (event) => {
   const text = new fabric.Textbox(t('everything_goes_well'), {
     ...defaultPosition,
     splitByGrapheme: true,
-    width: 400,
-    fontSize: 80,
+    width: 114,
+    fontSize: 12,
     fill: '#000000FF',
   });
 

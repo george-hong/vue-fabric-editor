@@ -12,6 +12,7 @@ import type {
 } from '@kuaitu/core';
 
 import Utils from './utils/utils';
+import LengthConvert from '@/utils/lengthConvert';
 
 class Editor extends EventEmitter {
   private canvas: fabric.Canvas | null = null;
@@ -66,12 +67,17 @@ class Editor extends EventEmitter {
     this.emit('unitChange', this.unit);
   }
 
-  // 像素与毫米转换（基于 96DPI）
+  // 像素与毫米转换
   pxToMm(px: number) {
-    return (px * 25.4) / 96;
+    return LengthConvert.pxToMm(px);
   }
   mmToPx(mm: number) {
-    return (mm * 96) / 25.4;
+    return LengthConvert.mmToPx(mm);
+  }
+
+  getSizeByCurrentUnit(size: number) {
+    if (this.unit === 'mm') return LengthConvert.pxToMm(size)
+    return size
   }
 
   // 引入组件

@@ -4,6 +4,8 @@ import { fabric } from 'fabric';
 import { getGap, mergeLines, darwRect, darwText, darwLine, drawMask } from './utils';
 import { throttle } from 'lodash-es';
 import { setupGuideLine } from './guideline';
+import LengthConvert from '@/utils/lengthConvert';
+import { IEditor } from '../interface/Editor';
 
 /**
  * 配置
@@ -13,6 +15,11 @@ export interface RulerOptions {
    * Canvas
    */
   canvas: Canvas;
+
+  /**
+   * Editor
+   */
+  editor: IEditor;
 
   /**
    * 单位（仅影响标尺文字展示）
@@ -164,8 +171,7 @@ class CanvasRuler {
   // 单位转换：像素 -> 显示单位数值
   private formatValueByUnit(pxValue: number) {
     if (this.unit === 'px') return pxValue;
-    // 96 DPI -> 1in = 25.4mm -> px to mm
-    return (pxValue * 25.4) / 96;
+    return LengthConvert.pxToMm(pxValue);
   }
 
   private formatLabel(pxValue: number) {
@@ -367,9 +373,10 @@ class CanvasRuler {
 
         // 获取数字的值
         const roundFactor = (x: number) => Math.round(x / zoom + startCalibration) + '';
-        const leftTextVal = roundFactor(isHorizontal ? rect.left : rect.top);
-        const rightTextVal = roundFactor(
-          isHorizontal ? rect.left + rect.width : rect.top + rect.height
+        const leftTextVal = this.options.editor.getSizeByCurrentUnit(roundFactor(isHorizontal ? rect.left : rect.top));
+        console.log('isHorizontal ? rect.left + rect.width : rect.top + rect.height', isHorizontal ? rect.left + rect.width : rect.top + rect.height, this.options.editor.getSizeByCurrentUnit(isHorizontal ? rect.left + rect.width : rect.top + rect.height))
+        const rightTextVal = this.options.editor.getSizeByCurrentUnit(
+          roundFactor(isHorizontal ? rect.left + rect.width : rect.top + rect.height)
         );
 
         const isSameText = leftTextVal === rightTextVal;
@@ -522,7 +529,7 @@ class CanvasRuler {
 
   /**
     判断鼠标是否在标尺上
-   * @param point 
+   * @param point
    * @returns "vertical" | "horizontal" | false
    */
   public isPointOnRuler(point: Point) {

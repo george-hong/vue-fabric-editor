@@ -18,6 +18,7 @@
           <div class="canvas-box">
             <div class="inside-shadow"></div>
             <canvas id="canvas" :class="state.ruler ? 'design-stage-grid' : ''"></canvas>
+            <ext></ext>
             <dragMode v-if="state.show"></dragMode>
             <zoom></zoom>
           </div>
@@ -34,6 +35,7 @@ import Left from './components/left/index.vue';
 import Right from './components/right/index.vue';
 
 import zoom from '@/components/zoom.vue';
+import ext from '@/components/ext.vue';
 import dragMode from '@/components/dragMode.vue';
 // 功能组件
 import { fabric } from 'fabric';

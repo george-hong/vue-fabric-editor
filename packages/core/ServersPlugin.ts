@@ -322,12 +322,12 @@ class ServersPlugin implements IPluginTempl {
     const workspace = this.canvas
       .getObjects()
       .find((item: fabric.Object) => item.id === 'workspace');
-    console.log('getObjects', this.canvas.getObjects());
     const { left, top, width, height } = workspace as fabric.Object;
     const option = {
       name: 'New Image',
-      format: 'png',
+      format: 'jpeg',
       quality: 1,
+      multiplier: 5,
       width,
       height,
       left,

@@ -9,6 +9,9 @@
     <Button long @click="downloadImage">
       下载图片
     </Button>
+    <Button long @click="printPDF">
+      打印
+    </Button>
   </div>
 </template>
 
@@ -30,6 +33,14 @@ const importJSON = () => {
 
 const downloadImage = () => {
   canvasEditor.saveImg();
+}
+
+const printPDF = () => {
+  canvasEditor.printPDF({
+    width: 30,
+    height: 40,
+    base64: '123',
+  })
 }
 
 </script>

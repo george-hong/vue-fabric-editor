@@ -76,6 +76,7 @@ import Editor, {
   LockPlugin,
   AddBaseTypePlugin,
   MaskPlugin,
+  PrintPlugin,
 } from '@kuaitu/core';
 
 const APIHOST = import.meta.env.APP_APIHOST;
@@ -139,6 +140,7 @@ onMounted(() => {
     .use(ResizePlugin)
     .use(LockPlugin)
     .use(AddBaseTypePlugin)
+    .use(PrintPlugin)
     .use(MaskPlugin);
 
   state.show = true;

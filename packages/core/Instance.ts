@@ -40,6 +40,7 @@ import ImageStroke from './plugin/ImageStroke';
 import ResizePlugin from './plugin/ResizePlugin';
 import LockPlugin from './plugin/LockPlugin';
 import AddBaseTypePlugin from './plugin/AddBaseTypePlugin';
+import PrintPlugin from './plugin/PrintPlugin';
 
 const AllEditor = {
   Editor,
@@ -77,6 +78,7 @@ const AllEditor = {
   ResizePlugin,
   LockPlugin,
   AddBaseTypePlugin,
+  PrintPlugin,
 };
 
 declare type KuaituEditor = typeof AllEditor;

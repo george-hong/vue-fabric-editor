@@ -373,9 +373,7 @@ class CanvasRuler {
 
         // 获取数字的值
         const computedPosition = (position: number) => {
-          const value = this.options.editor.getSizeByUnit(
-            Math.round(position / zoom + startCalibration) + ''
-          );
+          const value = this.options.editor.getSizeByUnit(position / zoom + startCalibration);
           return Math.round(value * 10) / 10;
         };
         const leftTextVal = computedPosition(isHorizontal ? rect.left : rect.top);

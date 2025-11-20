@@ -35,11 +35,12 @@ const downloadImage = () => {
   canvasEditor.saveImg();
 }
 
-const printPDF = () => {
+const printPDF = async () => {
+  const base64 = await canvasEditor.getBase64();
   canvasEditor.printPDF({
     width: 30,
-    height: 40,
-    base64: '123',
+    height: 30,
+    base64,
   })
 }
 

@@ -21,6 +21,7 @@ type IPlugin = Pick<
   | 'clipboardBase64'
   | 'saveJson'
   | 'saveSvg'
+  | 'getBase64'
   | 'saveImg'
   | 'clear'
   | 'preview'
@@ -57,6 +58,7 @@ class ServersPlugin implements IPluginTempl {
     'saveJson',
     'saveSvg',
     'saveImg',
+    'getBase64',
     'clear',
     'preview',
     'getSelectMode',
@@ -196,6 +198,7 @@ class ServersPlugin implements IPluginTempl {
       'extension',
       'verticalAlign',
       'roundValue',
+      'getBase64',
     ];
   }
 
@@ -267,6 +270,17 @@ class ServersPlugin implements IPluginTempl {
       const dataUrl = this.canvas.toDataURL(option);
       this.editor.hooksEntity.hookSaveAfter.callAsync(dataUrl, () => {
         downFile(dataUrl, 'png');
+      });
+    });
+  }
+
+  getBase64() {
+    return new Promise<string>((resolve) => {
+      this.editor.hooksEntity.hookSaveBefore.callAsync('', () => {
+        const option = this._getSaveOption();
+        this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        const dataUrl = this.canvas.toDataURL(option);
+        this.editor.hooksEntity.hookSaveAfter.callAsync(dataUrl, () => resolve(dataUrl));
       });
     });
   }

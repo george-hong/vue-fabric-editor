@@ -36,6 +36,7 @@ class BarCodePlugin implements IPluginTempl {
 
   async hookTransform(object: any) {
     if (object.extensionType === 'barcode') {
+      console.log('in trans');
       const url = await this._getBase64Str(object.extension);
       object.src = url;
     }
@@ -45,7 +46,7 @@ class BarCodePlugin implements IPluginTempl {
     JsBarcode(canvas, option.value, {
       ...option,
     });
-    const url = canvas.toDataURL('image/png', 1);
+    const url = canvas.toDataURL('image/png', 2);
     return url;
   }
 
@@ -53,13 +54,12 @@ class BarCodePlugin implements IPluginTempl {
     return {
       value: '123456',
       format: CodeType.CODE128,
-      text: 'hi kuaitu',
-      textAlign: 'left',
+      textAlign: 'center',
       textPosition: 'bottom',
       fontSize: 12,
       background: '#fff',
       lineColor: '#000',
-      displayValue: false,
+      displayValue: true,
     };
   }
 

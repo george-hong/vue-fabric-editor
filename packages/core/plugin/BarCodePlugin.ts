@@ -42,11 +42,13 @@ class BarCodePlugin implements IPluginTempl {
     }
   }
   _getBase64Str(option: any) {
-    const canvas = document.createElement('canvas');
-    JsBarcode(canvas, option.value, {
+    // 必须使用命名空间的svg元素才能正确生成barcode string
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    JsBarcode(svg, option.value, {
       ...option,
     });
-    const url = canvas.toDataURL('image/png', 2);
+    const str = new XMLSerializer().serializeToString(svg);
+    const url = `data:image/svg+xml;base64,` + btoa(str);
     return url;
   }
 
@@ -60,6 +62,9 @@ class BarCodePlugin implements IPluginTempl {
       background: '#fff',
       lineColor: '#000',
       displayValue: true,
+      margin: 0,
+      width: 1,
+      height: 30,
     };
   }
 

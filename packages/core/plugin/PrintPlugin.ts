@@ -2,27 +2,27 @@ import { fabric } from 'fabric';
 import type { IEditor, IPluginTempl } from '@kuaitu/core';
 import { io } from 'socket.io-client';
 
-type IPlugin = Pick<PrintPlugin, 'printPDF'>;
+type IPlugin = Pick<PrintPlugin, 'printPDF' | 'getPrinterList'>;
 
 export interface Option {
-	'printer-location': string;
-	'printer-make-and-model': string;
-	'system_driverinfo': string;
+  'printer-location': string;
+  'printer-make-and-model': string;
+  system_driverinfo: string;
 }
 
 export interface IPrinterItem {
-	name: string;
-	displayName: string;
-	description: string;
-	status: number;
-	isDefault: boolean;
-	options: Option;
+  name: string;
+  displayName: string;
+  description: string;
+  status: number;
+  isDefault: boolean;
+  options: Option;
 }
 
 export interface IPrintPDFOption {
-  width: number
-  height: number
-  base64: string
+  width: number;
+  height: number;
+  base64: string;
 }
 
 declare module '@kuaitu/core' {
@@ -32,11 +32,11 @@ declare module '@kuaitu/core' {
 
 export default class PrintPlugin implements IPluginTempl {
   static pluginName = 'PrintPlugin';
-  static apis = ['printPDF'];
+  static apis = ['printPDF', 'getPrinterList'];
 
   socket?: any;
-  isConnect: boolean = false
-  printerList: IPrinterItem[] = []
+  isConnect = false;
+  printerList: IPrinterItem[] = [];
 
   constructor(public canvas: fabric.Canvas, public editor: IEditor) {
     this.editor = editor;
@@ -49,15 +49,14 @@ export default class PrintPlugin implements IPluginTempl {
       },
     });
 
-
     this.socket.on('connect', () => {
-      this.isConnect = true
+      this.isConnect = true;
       // globalThis.connect = true;
       // TODO: Do something for your project
     });
 
     this.socket.on('printerList', (printerList: IPrinterItem[]) => {
-      console.log('printerList', printerList)
+      console.log('printerList', printerList);
       this.printerList = printerList;
     });
   }
@@ -66,12 +65,14 @@ export default class PrintPlugin implements IPluginTempl {
     this.socket.emit('printPDF', {
       ...options,
       unit: 'mm',
-    })
+    });
+  }
+
+  getPrinterList() {
+    return this.printerList;
   }
 
   destroy() {
     console.log('pluginDestroy');
   }
-
-
 }

@@ -9,6 +9,7 @@
 import { fabric } from 'fabric';
 import JsBarcode from 'jsbarcode';
 import type { IEditor, IPluginTempl } from '@kuaitu/core';
+import { log } from 'console';
 
 type IPlugin = Pick<BarCodePlugin, 'addBarcode' | 'setBarcode' | 'getBarcodeTypes'>;
 
@@ -89,6 +90,7 @@ class BarCodePlugin implements IPluginTempl {
       textAlign: textAlign || 'center',
       boxWidth: originalBarcodeWidth,
       scale: scale,
+      textPosition: textPosition || 'bottom', // 传递文本位置，用于决定间距
     });
     
     // 合并条形码和文本，使用高分辨率
@@ -152,27 +154,33 @@ class BarCodePlugin implements IPluginTempl {
   // 在 canvas 上绘制文本
   private _drawText(
     text: string,
-    options: { fontSize: number; textAlign: string; boxWidth: number; scale: number }
+    options: { fontSize: number; textAlign: string; boxWidth: number; scale: number; textPosition?: string }
   ): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       throw new Error('无法创建 canvas 上下文');
     }
-    
     // 根据缩放比例设置 canvas 的实际尺寸
     const scaledWidth = options.boxWidth * options.scale;
     const scaledFontSize = options.fontSize * options.scale;
     const textHeight = scaledFontSize;
-    const padding = 4 * options.scale;
+    const spacing = 4 * options.scale; // 文本和条形码之间的间距
+    
+    // 根据文本位置决定 canvas 高度和 padding
+    // 文字在上方时，只需要下边距；文字在下方时，只需要上边距
+    const isTop = options.textPosition === 'top';
+    const canvasHeight = isTop 
+      ? textHeight + spacing  // 文字在上方：文本高度 + 下方间距
+      : spacing + textHeight;  // 文字在下方：上方间距 + 文本高度
     
     // 设置 canvas 的实际尺寸（高分辨率）
     canvas.width = scaledWidth;
-    canvas.height = textHeight + padding;
+    canvas.height = canvasHeight;
     
     // 设置 canvas 的显示尺寸（CSS 尺寸）
     canvas.style.width = `${options.boxWidth}px`;
-    canvas.style.height = `${(textHeight + padding) / options.scale}px`;
+    canvas.style.height = `${canvasHeight / options.scale}px`;
     
     // 缩放上下文以匹配高分辨率
     ctx.scale(options.scale, options.scale);
@@ -193,8 +201,13 @@ class BarCodePlugin implements IPluginTempl {
       x = 0;
     }
     
-    // 绘制文本（使用原始坐标，因为已经通过 scale 缩放）
-    ctx.fillText(text, x, padding / options.scale / 2);
+    // 计算文本 y 坐标
+    // 文字在上方时，文本在顶部（y = 0）
+    // 文字在下方时，文本在间距下方（y = spacing / scale）
+    const y = isTop ? 0 : spacing / options.scale;
+    
+    // 绘制文本
+    ctx.fillText(text, x, y);
     
     return canvas;
   }
@@ -217,9 +230,16 @@ class BarCodePlugin implements IPluginTempl {
     const barcodeWidth = barcodeImage.width;
     const barcodeHeight = barcodeImage.height;
     
-    // 文本 canvas 的实际尺寸（已经是高分辨率）
-    const textHeight = textCanvas.height;
+    // 文本 canvas 的实际尺寸（已经是高分辨率，包含间距）
+    const textCanvasHeight = textCanvas.height; // 包含文本和间距的总高度
     const textWidth = textCanvas.width;
+    
+    // 计算纯文本高度（不包含间距）
+    // 间距是 4 * scale，文本高度是 fontSize * scale
+    // 但为了准确，我们从 textCanvas 中提取实际文本高度
+    // 由于间距在顶部或底部，文本高度大约是 textCanvasHeight - 4 * scale
+    const spacing = 4 * scale;
+    const actualTextHeight = textCanvasHeight - spacing; // 纯文本高度
     
     // 使用较大的宽度作为最终宽度（高分辨率）
     const finalWidth = Math.max(barcodeWidth, textWidth);
@@ -232,15 +252,15 @@ class BarCodePlugin implements IPluginTempl {
       // 根据传入的 height 和 scale 计算高分辨率目标高度
       const targetHeightScaled = targetHeight * scale;
       
-      // 规则1: 如果文本高度大于目标高度，以文本高度为准（保证文本完整展示）
-      if (textHeight > targetHeightScaled) {
-        finalHeight = textHeight;
+      // 规则1: 如果文本 canvas 高度（包含间距）大于目标高度，以文本 canvas 高度为准（保证文本完整展示）
+      if (textCanvasHeight > targetHeightScaled) {
+        finalHeight = textCanvasHeight;
         // 如果文本在上方，条形码高度为0；如果文本在下方，条形码高度也为0（因为文本占满全部高度）
         barcodeDrawHeight = 0;
       } else {
-        // 规则2: 如果 SVG + text 的高度小于目标高度，需要拉伸 SVG
-        const availableHeightForBarcode = targetHeightScaled - textHeight;
-        if (barcodeHeight + textHeight < targetHeightScaled) {
+        // 规则2: 如果 SVG + textCanvas 的高度小于目标高度，需要拉伸 SVG
+        const availableHeightForBarcode = targetHeightScaled - textCanvasHeight;
+        if (barcodeHeight + textCanvasHeight < targetHeightScaled) {
           finalHeight = targetHeightScaled;
           barcodeDrawHeight = availableHeightForBarcode; // 拉伸 SVG
         } else {
@@ -251,7 +271,7 @@ class BarCodePlugin implements IPluginTempl {
       }
     } else {
       // 如果没有提供目标高度，使用实际合并后的高度
-      finalHeight = barcodeHeight + textHeight;
+      finalHeight = barcodeHeight + textCanvasHeight;
       barcodeDrawHeight = barcodeHeight;
     }
     
@@ -272,22 +292,23 @@ class BarCodePlugin implements IPluginTempl {
     const barcodeX = (finalWidth - barcodeWidth) / 2;
     
     if (textPosition === 'top') {
-      // 文本在上方
+      // 文本在上方：只需要保留下方间距
       let currentY = 0;
       
       // 绘制文本（始终完整显示）
+      // 文本 canvas 已经包含了下方间距，直接绘制整个 canvas
       ctx.drawImage(
         textCanvas,
         0,
         0,
         textWidth,
-        textHeight,
+        textCanvas.height,
         textX,
         currentY,
         textWidth,
-        textHeight
+        textCanvas.height
       );
-      currentY += textHeight;
+      currentY += textCanvas.height; // 包含文本和下方间距
       
       // 绘制条形码（可能被拉伸或裁剪）
       if (barcodeDrawHeight > 0 && currentY < finalHeight) {
@@ -304,7 +325,7 @@ class BarCodePlugin implements IPluginTempl {
         );
       }
     } else {
-      // 文本在下方（默认）
+      // 文本在下方（默认）：只需要保留上方间距
       let currentY = 0;
       
       // 绘制条形码（可能被拉伸或裁剪）
@@ -324,16 +345,17 @@ class BarCodePlugin implements IPluginTempl {
       }
       
       // 绘制文本（始终完整显示）
+      // 文本 canvas 已经包含了上方间距，直接绘制整个 canvas
       ctx.drawImage(
         textCanvas,
         0,
         0,
         textWidth,
-        textHeight,
+        textCanvas.height,
         textX,
         currentY,
         textWidth,
-        textHeight
+        textCanvas.height
       );
     }
     
@@ -371,15 +393,24 @@ class BarCodePlugin implements IPluginTempl {
     }
     
     const updateFn = async () => {
+      const zoom = this.canvas.getZoom()
       const target = imgEl;
+      const { width, height } = target.getBoundingRect()
+      const currentWidth = width / zoom;
+      const currentHeight = height / zoom;
+    
+
+      // 保持 fontSize 不变，只更新宽度和高度
       const options = {
         ...extension,
-        boxWidth: target.width,
-        height: target.height,
+        boxWidth: currentWidth,
+        height: currentHeight,
+        // fontSize 保持不变，不随尺寸变化
       };
       
       try {
         const url = await this._getBase64Str(options);
+        console.log('url-------------', url)
         imgEl.setSrc(url);
         imgEl.set('extension', options);
         this.canvas.renderAll();
@@ -417,28 +448,28 @@ class BarCodePlugin implements IPluginTempl {
           await this._updateBarcodeImage(target, true);
         });
         
-        // 监听缩放事件（防抖更新）
-        imgEl.on('scaling', () => {
-          this._updateBarcodeImage(imgEl, false);
-        });
+        // // 监听缩放事件（防抖更新）
+        // imgEl.on('scaling', () => {
+        //   this._updateBarcodeImage(imgEl, false);
+        // });
         
-        // 监听缩放结束事件（立即更新）
-        imgEl.on('scaled', async () => {
-          await this._updateBarcodeImage(imgEl, true);
-        });
+        // // 监听缩放结束事件（立即更新）
+        // imgEl.on('scaled', async () => {
+        //   await this._updateBarcodeImage(imgEl, true);
+        // });
         
-        // 监听 canvas zoom 变化（防抖更新）
-        const zoomHandler = () => {
-          this._updateBarcodeImage(imgEl, false);
-        };
-        this.canvas.on('mouse:wheel', zoomHandler);
+        // // 监听 canvas zoom 变化（防抖更新）
+        // const zoomHandler = () => {
+        //   this._updateBarcodeImage(imgEl, false);
+        // };
+        // this.canvas.on('mouse:wheel', zoomHandler);
         
         // 保存事件处理器，以便在销毁时移除
-        (imgEl as any)._barcodeZoomHandler = zoomHandler;
+        // (imgEl as any)._barcodeZoomHandler = zoomHandler;
         
         this.canvas.add(imgEl);
         this.canvas.setActiveObject(imgEl);
-        this.editor.position('center');
+        this.editor.position(new fabric.Point(0, 0));
         this.canvas.renderAll();
         this.editor.saveState();
       },

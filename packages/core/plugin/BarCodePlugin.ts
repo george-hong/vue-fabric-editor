@@ -84,11 +84,12 @@ class BarCodePlugin implements IPluginTempl {
     // 创建高分辨率 canvas 渲染 SVG
     const svgImage = await this._loadImageToCanvas(svgUrl, scale);
     
-    // 根据条形码的原始宽度和缩放比例创建文本 canvas
+    // 文本应该匹配 boxWidth（期望的显示宽度），而不是条形码的原始宽度
+    // 这样当条形码被拉伸到 boxWidth 时，文本宽度也能匹配
     const textCanvas = this._drawText(option.value, {
       fontSize: fontSize || 12,
       textAlign: textAlign || 'center',
-      boxWidth: originalBarcodeWidth,
+      boxWidth: option.boxWidth || originalBarcodeWidth, // 使用 boxWidth 而不是 originalBarcodeWidth
       scale: scale,
       textPosition: textPosition || 'bottom', // 传递文本位置，用于决定间距
     });
@@ -99,7 +100,8 @@ class BarCodePlugin implements IPluginTempl {
       textCanvas,
       textPosition || 'bottom',
       scale,
-      option.height // 传入目标高度
+      option.height, // 传入目标高度
+      option.boxWidth // 传入目标宽度，确保条形码和文本宽度一致
     );
     
     // 返回合并后的 base64
@@ -218,7 +220,8 @@ class BarCodePlugin implements IPluginTempl {
     textCanvas: HTMLCanvasElement,
     textPosition: string,
     scale: number,
-    targetHeight?: number
+    targetHeight?: number,
+    targetWidth?: number
   ): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -241,8 +244,11 @@ class BarCodePlugin implements IPluginTempl {
     const spacing = 4 * scale;
     const actualTextHeight = textCanvasHeight - spacing; // 纯文本高度
     
-    // 使用较大的宽度作为最终宽度（高分辨率）
-    const finalWidth = Math.max(barcodeWidth, textWidth);
+    // 如果提供了目标宽度，使用目标宽度（确保条形码和文本宽度一致，避免拉伸）
+    // 否则使用较大的宽度作为最终宽度（高分辨率）
+    const finalWidth = targetWidth !== undefined && targetWidth > 0 
+      ? targetWidth * scale 
+      : Math.max(barcodeWidth, textWidth);
     
     // 计算目标高度（如果提供了 targetHeight）
     let finalHeight: number;
@@ -289,7 +295,11 @@ class BarCodePlugin implements IPluginTempl {
     
     // 根据 textPosition 决定文本位置
     const textX = (finalWidth - textWidth) / 2;
-    const barcodeX = (finalWidth - barcodeWidth) / 2;
+    // 如果提供了目标宽度，条形码会被拉伸到目标宽度，所以使用目标宽度计算居中位置
+    const barcodeDrawWidth = targetWidth !== undefined && targetWidth > 0 
+      ? targetWidth * scale 
+      : barcodeWidth;
+    const barcodeX = (finalWidth - barcodeDrawWidth) / 2;
     
     if (textPosition === 'top') {
       // 文本在上方：只需要保留下方间距
@@ -311,6 +321,10 @@ class BarCodePlugin implements IPluginTempl {
       currentY += textCanvas.height; // 包含文本和下方间距
       
       // 绘制条形码（可能被拉伸或裁剪）
+      // 如果提供了目标宽度，条形码应该被拉伸/压缩到目标宽度，避免文本被拉伸
+      const barcodeDrawWidth = targetWidth !== undefined && targetWidth > 0 
+        ? targetWidth * scale 
+        : barcodeWidth;
       if (barcodeDrawHeight > 0 && currentY < finalHeight) {
         ctx.drawImage(
           barcodeImage,
@@ -320,7 +334,7 @@ class BarCodePlugin implements IPluginTempl {
           barcodeHeight,
           barcodeX,
           currentY,
-          barcodeWidth,
+          barcodeDrawWidth,
           barcodeDrawHeight
         );
       }
@@ -329,6 +343,10 @@ class BarCodePlugin implements IPluginTempl {
       let currentY = 0;
       
       // 绘制条形码（可能被拉伸或裁剪）
+      // 如果提供了目标宽度，条形码应该被拉伸/压缩到目标宽度，避免文本被拉伸
+      const barcodeDrawWidth = targetWidth !== undefined && targetWidth > 0 
+        ? targetWidth * scale 
+        : barcodeWidth;
       if (barcodeDrawHeight > 0) {
         ctx.drawImage(
           barcodeImage,
@@ -338,7 +356,7 @@ class BarCodePlugin implements IPluginTempl {
           barcodeHeight,
           barcodeX,
           currentY,
-          barcodeWidth,
+          barcodeDrawWidth,
           barcodeDrawHeight
         );
         currentY += barcodeDrawHeight;
@@ -393,12 +411,13 @@ class BarCodePlugin implements IPluginTempl {
     }
     
     const updateFn = async () => {
-      const zoom = this.canvas.getZoom()
       const target = imgEl;
-      const { width, height } = target.getBoundingRect()
-      const currentWidth = width / zoom;
-      const currentHeight = height / zoom;
-    
+      
+      // 使用 getScaledWidth/getScaledHeight 获取 canvas 坐标系中的实际显示尺寸
+      // 这些方法已经考虑了 scaleX/scaleY，返回的是 canvas 坐标系中的尺寸（不考虑 zoom）
+      // 生成的图片应该匹配这个尺寸，这样当图片被加载后，scaleX/scaleY 为 1 时就能正确显示
+      const currentWidth = target.getScaledWidth();
+      const currentHeight = target.getScaledHeight();
 
       // 保持 fontSize 不变，只更新宽度和高度
       const options = {
@@ -412,6 +431,32 @@ class BarCodePlugin implements IPluginTempl {
         const url = await this._getBase64Str(options);
         // setSrc 是异步的，需要在回调中等待图片加载完成后再渲染
         imgEl.setSrc(url, () => {
+          // 获取图片的实际像素尺寸（高分辨率）
+          const imgWidth = imgEl.width || 0;
+          const imgHeight = imgEl.height || 0;
+          
+          if (imgWidth > 0 && imgHeight > 0) {
+            // 计算缩放比例，使图片在 canvas 坐标系中显示为 currentWidth x currentHeight
+            // 由于生成的图片是高分辨率的，需要除以 scale 来得到 canvas 坐标系中的尺寸
+            const zoom = this.canvas.getZoom() || 1;
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const scale = zoom * devicePixelRatio;
+            
+            // 计算期望的显示尺寸（canvas 坐标系）
+            const targetDisplayWidth = currentWidth;
+            const targetDisplayHeight = currentHeight;
+            
+            // 计算缩放比例
+            const scaleX = targetDisplayWidth / imgWidth;
+            const scaleY = targetDisplayHeight / imgHeight;
+            
+            // 设置缩放，使图片显示为期望的尺寸
+            imgEl.set({
+              scaleX: scaleX,
+              scaleY: scaleY,
+            });
+          }
+          
           imgEl.set('extension', options);
           this.canvas.renderAll();
           // 更新完成后清理防抖记录
@@ -457,18 +502,18 @@ class BarCodePlugin implements IPluginTempl {
         // });
         
         // // 监听缩放结束事件（立即更新）
-        // imgEl.on('scaled', async () => {
-        //   await this._updateBarcodeImage(imgEl, true);
-        // });
+        imgEl.on('scaled', async () => {
+          await this._updateBarcodeImage(imgEl, true);
+        });
         
         // // 监听 canvas zoom 变化（防抖更新）
-        // const zoomHandler = () => {
-        //   this._updateBarcodeImage(imgEl, false);
-        // };
-        // this.canvas.on('mouse:wheel', zoomHandler);
+        const zoomHandler = () => {
+          this._updateBarcodeImage(imgEl, false);
+        };
+        this.canvas.on('mouse:wheel', zoomHandler);
         
         // 保存事件处理器，以便在销毁时移除
-        // (imgEl as any)._barcodeZoomHandler = zoomHandler;
+        (imgEl as any)._barcodeZoomHandler = zoomHandler;
         
         this.canvas.add(imgEl);
         this.canvas.setActiveObject(imgEl);

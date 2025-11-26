@@ -410,13 +410,16 @@ class BarCodePlugin implements IPluginTempl {
       
       try {
         const url = await this._getBase64Str(options);
-        console.log('url-------------', url)
-        imgEl.setSrc(url);
-        imgEl.set('extension', options);
-        this.canvas.renderAll();
+        // setSrc 是异步的，需要在回调中等待图片加载完成后再渲染
+        imgEl.setSrc(url, () => {
+          imgEl.set('extension', options);
+          this.canvas.renderAll();
+          // 更新完成后清理防抖记录
+          this._updateBarcodeImageDebounced.delete(imgEl);
+        });
       } catch (error) {
         console.error('更新条形码失败:', error);
-      } finally {
+        // 发生错误时也要清理防抖记录
         this._updateBarcodeImageDebounced.delete(imgEl);
       }
     };

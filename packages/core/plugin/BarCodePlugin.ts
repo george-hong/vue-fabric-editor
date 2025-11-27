@@ -42,6 +42,49 @@ class BarCodePlugin implements IPluginTempl {
       object.src = url;
     }
   }
+
+  // 绑定条形码对象的事件监听器
+  private _bindBarcodeEvents(imgEl: fabric.Image) {
+    // 移除旧的事件监听器（如果存在）
+    imgEl.off('modified');
+    imgEl.off('scaled');
+    
+    // 移除旧的 zoom 处理器（如果存在）
+    if ((imgEl as any)._barcodeZoomHandler) {
+      this.canvas.off('mouse:wheel', (imgEl as any)._barcodeZoomHandler);
+    }
+    
+    // 监听对象修改事件（大小变化）- 立即更新
+    imgEl.on('modified', async (event: any) => {
+      const target = (event.target as fabric.Image) || imgEl;
+      await this._updateBarcodeImage(target, true);
+    });
+    
+    // 监听缩放结束事件（立即更新）
+    imgEl.on('scaled', async () => {
+      await this._updateBarcodeImage(imgEl, true);
+    });
+    
+    // 监听 canvas zoom 变化（防抖更新）
+    const zoomHandler = () => {
+      this._updateBarcodeImage(imgEl, false);
+    };
+    this.canvas.on('mouse:wheel', zoomHandler);
+    
+    // 保存事件处理器，以便在销毁时移除
+    (imgEl as any)._barcodeZoomHandler = zoomHandler;
+  }
+
+  // 加载 JSON 后恢复事件监听器
+  hookImportAfter() {
+    // 遍历所有对象，找到条形码对象并重新绑定事件
+    this.canvas.getObjects().forEach((obj) => {
+      if (obj.type === 'image' && (obj as any).extensionType === 'barcode') {
+        this._bindBarcodeEvents(obj as fabric.Image);
+      }
+    });
+    return Promise.resolve();
+  }
   async _getBase64Str(option: any): Promise<string> {
     // 获取 canvas 的缩放比例，用于提高绘制分辨率
     const zoom = this.canvas.getZoom() || 1;
@@ -490,30 +533,8 @@ class BarCodePlugin implements IPluginTempl {
         });
         imgEl.scaleToWidth(option.boxWidth);
         
-        // 监听对象修改事件（大小变化）- 立即更新
-        imgEl.on('modified', async (event: any) => {
-          const target = (event.target as fabric.Image) || imgEl;
-          await this._updateBarcodeImage(target, true);
-        });
-        
-        // // 监听缩放事件（防抖更新）
-        // imgEl.on('scaling', () => {
-        //   this._updateBarcodeImage(imgEl, false);
-        // });
-        
-        // // 监听缩放结束事件（立即更新）
-        imgEl.on('scaled', async () => {
-          await this._updateBarcodeImage(imgEl, true);
-        });
-        
-        // // 监听 canvas zoom 变化（防抖更新）
-        const zoomHandler = () => {
-          this._updateBarcodeImage(imgEl, false);
-        };
-        this.canvas.on('mouse:wheel', zoomHandler);
-        
-        // 保存事件处理器，以便在销毁时移除
-        (imgEl as any)._barcodeZoomHandler = zoomHandler;
+        // 绑定事件监听器
+        this._bindBarcodeEvents(imgEl);
         
         this.canvas.add(imgEl);
         this.canvas.setActiveObject(imgEl);
@@ -540,30 +561,8 @@ class BarCodePlugin implements IPluginTempl {
           });
           imgEl.scaleToWidth(activeObject.getScaledWidth());
           
-          // 监听对象修改事件（大小变化）- 立即更新
-          imgEl.on('modified', async (event: any) => {
-            const target = (event.target as fabric.Image) || imgEl;
-            await this._updateBarcodeImage(target, true);
-          });
-          
-          // 监听缩放事件（防抖更新）
-          imgEl.on('scaling', () => {
-            this._updateBarcodeImage(imgEl, false);
-          });
-          
-          // 监听缩放结束事件（立即更新）
-          imgEl.on('scaled', async () => {
-            await this._updateBarcodeImage(imgEl, true);
-          });
-          
-          // 监听 canvas zoom 变化（防抖更新）
-          const zoomHandler = () => {
-            this._updateBarcodeImage(imgEl, false);
-          };
-          this.canvas.on('mouse:wheel', zoomHandler);
-          
-          // 保存事件处理器，以便在销毁时移除
-          (imgEl as any)._barcodeZoomHandler = zoomHandler;
+          // 绑定事件监听器
+          this._bindBarcodeEvents(imgEl);
           
           this.editor.del();
           this.canvas.add(imgEl);

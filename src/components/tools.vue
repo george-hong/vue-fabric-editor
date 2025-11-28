@@ -8,6 +8,9 @@
       <span @click="() => addTextBox()" :draggable="true" @dragend="addTextBox">
         <textBoxIcon width="26" height="26"></textBoxIcon>
       </span>
+      <span @click="() => addVaribleTextBox()" :draggable="true" @dragend="addVaribleTextBox">
+        <textBoxIcon width="26" height="26"></textBoxIcon>
+      </span>
       <span @click="() => addRect()" :draggable="true" @dragend="addRect">
         <rectIcon width="26" height="26"></rectIcon>
       </span>
@@ -132,6 +135,23 @@ const addTextBox = (event) => {
     width: 114,
     fontSize: 12,
     fill: '#000000FF',
+  });
+
+  canvasEditor.addBaseType(text, { center: true, event });
+};
+
+const addVaribleTextBox = (event) => {
+  cancelDraw();
+  const text = new fabric.Textbox(t('everything_goes_well'), {
+    ...defaultPosition,
+    splitByGrapheme: true,
+    width: 114,
+    fontSize: 12,
+    fill: '#000000FF',
+  });
+
+  text.set('extension', {
+    _field_: 'userField'
   });
 
   canvasEditor.addBaseType(text, { center: true, event });

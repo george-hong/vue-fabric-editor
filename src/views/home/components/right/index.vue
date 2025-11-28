@@ -29,6 +29,7 @@ import attributeColor from '@/components/attributeColor.vue';
 import attributeBarcode from '@/components/attributeBarcode.vue';
 import attributeQrCode from '@/components/attributeQrCode.vue';
 import cropperImg from '@/components/cropperImg.vue';
+import attributeField from '@/components/attributeField.vue';
 // hooks
 import useSelectListen from '@/hooks/useSelectListen';
 
@@ -102,6 +103,8 @@ const switchAttrBar = () => {
         <imgStroke />
         <!-- 颜色 -->
         <attributeColor></attributeColor>
+        <!-- 数据字段 -->
+        <attributeField />
         <!-- 字体属性 -->
         <attributeFont></attributeFont>
         <!-- 字体小数点 -->

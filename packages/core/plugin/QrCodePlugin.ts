@@ -75,7 +75,7 @@ class QrCodePlugin implements IPluginTempl {
       margin: 10,
       errorCorrectionLevel: 'M',
       dotsColor: '#000000',
-      dotsType: 'rounded',
+      dotsType: 'square',
       cornersSquareColor: '#000000',
       cornersSquareType: 'square',
       cornersDotColor: '#000000',

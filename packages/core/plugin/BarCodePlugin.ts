@@ -38,8 +38,16 @@ class BarCodePlugin implements IPluginTempl {
   async hookTransform(object: any) {
     if (object.extensionType === 'barcode') {
       console.log('in trans');
-      const url = await this._getBase64Str(object.extension);
+      const extension = object.extension || {};
+      
+      // 恢复保存的宽高信息，如果存在则使用，否则使用默认值
+      const options = this._mergeBarcodeOptions(extension);
+      
+      const url = await this._getBase64Str(options);
       object.src = url;
+      
+      // 更新 extension 以确保宽高信息被保存
+      object.extension = options;
     }
   }
 
@@ -77,13 +85,83 @@ class BarCodePlugin implements IPluginTempl {
 
   // 加载 JSON 后恢复事件监听器
   hookImportAfter() {
-    // 遍历所有对象，找到条形码对象并重新绑定事件
-    this.canvas.getObjects().forEach((obj) => {
-      if (obj.type === 'image' && (obj as any).extensionType === 'barcode') {
-        this._bindBarcodeEvents(obj as fabric.Image);
-      }
+    return new Promise<void>(async (resolve) => {
+      // 遍历所有对象，找到条形码对象并重新绑定事件
+      const barcodeObjects: fabric.Image[] = [];
+      this.canvas.getObjects().forEach((obj) => {
+        if (obj.type === 'image' && (obj as any).extensionType === 'barcode') {
+          barcodeObjects.push(obj as fabric.Image);
+          this._bindBarcodeEvents(obj as fabric.Image);
+        }
+      });
+      
+      // 重新生成所有条形码的 src，因为 canvas zoom 可能在 hookImportAfter 中被改变了
+      // 使用保存的 extension 中的 boxWidth 和 height（原始值），但使用当前的 canvas zoom 重新生成
+      await Promise.all(
+        barcodeObjects.map(async (imgEl) => {
+          const extension = imgEl.get('extension');
+          if (!extension) return;
+          
+          // 使用保存的宽高信息，保持原始值不变
+          const options = this._mergeBarcodeOptions(extension);
+          
+          try {
+            // 使用当前的 canvas zoom 重新生成条形码图片
+            const url = await this._getBase64Str(options);
+            
+            // 获取当前的缩放比例，用于计算正确的 scaleX 和 scaleY
+            const currentWidth = imgEl.getScaledWidth();
+            const currentHeight = imgEl.getScaledHeight();
+            
+            await new Promise<void>((resolve) => {
+              imgEl.setSrc(url, () => {
+                // 设置缩放比例，使图片显示为期望的尺寸
+                this._setImageScale(imgEl, currentWidth, currentHeight);
+                
+                // 保持 extension 不变，不更新 boxWidth 和 height
+                resolve();
+              });
+            });
+          } catch (error) {
+            console.error('重新生成条形码失败:', error);
+          }
+        })
+      );
+      
+      this.canvas.renderAll();
+      resolve();
     });
-    return Promise.resolve();
+  }
+
+  // 保存前处理：确保保存宽高信息到 extension
+  // 注意：src 不会被导出，因为 toJSON(keys) 只会保存 keys 中指定的属性，而 src 不在 getExtensionKey() 中
+  // 保存的是 extension 中已有的 boxWidth 和 height（缩放前的原始值），而不是渲染后的尺寸
+  hookSaveBefore() {
+    return new Promise<void>((resolve) => {
+      // 遍历所有对象，找到条形码对象
+      this.canvas.getObjects().forEach((obj) => {
+        if (obj.type === 'image' && (obj as any).extensionType === 'barcode') {
+          const imgEl = obj as fabric.Image;
+          const extension = imgEl.get('extension');
+          
+          if (extension) {
+            // 确保 extension 中包含 boxWidth 和 height
+            // 这些值已经在 _updateBarcodeImage 中被更新，是缩放前的原始值
+            // 如果不存在，使用默认值
+            const defaultOption = this._defaultBarcodeOption();
+            const finalExtension = {
+              ...extension,
+              boxWidth: extension.boxWidth !== undefined ? extension.boxWidth : defaultOption.boxWidth,
+              height: extension.height !== undefined ? extension.height : defaultOption.height,
+            };
+            
+            // 更新 extension，确保保存时包含这些信息
+            imgEl.set('extension', finalExtension);
+          }
+        }
+      });
+      resolve();
+    });
   }
   async _getBase64Str(option: any): Promise<string> {
     // 获取 canvas 的缩放比例，用于提高绘制分辨率
@@ -440,6 +518,35 @@ class BarCodePlugin implements IPluginTempl {
     };
   }
 
+  // 合并条形码选项，确保 boxWidth 和 height 存在
+  private _mergeBarcodeOptions(extension: any) {
+    const defaultOption = this._defaultBarcodeOption();
+    return {
+      ...defaultOption,
+      ...extension,
+      boxWidth: extension.boxWidth !== undefined ? extension.boxWidth : defaultOption.boxWidth,
+      height: extension.height !== undefined ? extension.height : defaultOption.height,
+    };
+  }
+
+  // 设置图片的缩放比例，使图片显示为指定的尺寸
+  private _setImageScale(imgEl: fabric.Image, targetWidth: number, targetHeight: number) {
+    const imgWidth = imgEl.width || 0;
+    const imgHeight = imgEl.height || 0;
+    
+    if (imgWidth > 0 && imgHeight > 0) {
+      // 计算缩放比例，使图片在 canvas 坐标系中显示为 targetWidth x targetHeight
+      const scaleX = targetWidth / imgWidth;
+      const scaleY = targetHeight / imgHeight;
+      
+      // 设置缩放，使图片显示为期望的尺寸
+      imgEl.set({
+        scaleX: scaleX,
+        scaleY: scaleY,
+      });
+    }
+  }
+
   // 更新条形码图片的辅助方法（带防抖）
   private _updateBarcodeImageDebounced: Map<fabric.Image, NodeJS.Timeout> = new Map();
   
@@ -474,31 +581,8 @@ class BarCodePlugin implements IPluginTempl {
         const url = await this._getBase64Str(options);
         // setSrc 是异步的，需要在回调中等待图片加载完成后再渲染
         imgEl.setSrc(url, () => {
-          // 获取图片的实际像素尺寸（高分辨率）
-          const imgWidth = imgEl.width || 0;
-          const imgHeight = imgEl.height || 0;
-          
-          if (imgWidth > 0 && imgHeight > 0) {
-            // 计算缩放比例，使图片在 canvas 坐标系中显示为 currentWidth x currentHeight
-            // 由于生成的图片是高分辨率的，需要除以 scale 来得到 canvas 坐标系中的尺寸
-            const zoom = this.canvas.getZoom() || 1;
-            const devicePixelRatio = window.devicePixelRatio || 1;
-            const scale = zoom * devicePixelRatio;
-            
-            // 计算期望的显示尺寸（canvas 坐标系）
-            const targetDisplayWidth = currentWidth;
-            const targetDisplayHeight = currentHeight;
-            
-            // 计算缩放比例
-            const scaleX = targetDisplayWidth / imgWidth;
-            const scaleY = targetDisplayHeight / imgHeight;
-            
-            // 设置缩放，使图片显示为期望的尺寸
-            imgEl.set({
-              scaleX: scaleX,
-              scaleY: scaleY,
-            });
-          }
+          // 设置缩放比例，使图片显示为期望的尺寸
+          this._setImageScale(imgEl, currentWidth, currentHeight);
           
           imgEl.set('extension', options);
           this.canvas.renderAll();

@@ -167,8 +167,27 @@ class BarCodePlugin implements IPluginTempl {
     // 获取 canvas 的缩放比例，用于提高绘制分辨率
     const zoom = this.canvas.getZoom() || 1;
     const devicePixelRatio = window.devicePixelRatio || 1;
-    // 使用 zoom 和 devicePixelRatio 的乘积作为缩放因子
-    const scale = zoom * devicePixelRatio;
+    // 使用 zoom 和 devicePixelRatio 的乘积作为基础缩放因子
+    let scale = zoom * devicePixelRatio;
+    
+    // 计算条形码的最小尺寸，用于优化清晰度
+    const minDimension = Math.min(option.boxWidth || 60, option.height || 30);
+    
+    // 对于小尺寸的条形码，使用更高的 scale 来保证清晰度
+    // 当条形码宽度或高度小于 100px 时，增加 scale
+    if (minDimension < 100) {
+      // 小尺寸时，使用更高的 scale（至少 3 倍）
+      const minScale = 3;
+      scale = Math.max(scale, minScale);
+    } else if (minDimension < 200) {
+      // 中等尺寸时，使用适中的 scale（至少 2 倍）
+      const minScale = 2;
+      scale = Math.max(scale, minScale);
+    }
+    
+    // 设置最大 scale 限制，避免生成过大的图片
+    const maxScale = 5;
+    scale = Math.min(scale, maxScale);
     
     // 必须使用命名空间的svg元素才能正确生成barcode string
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -183,8 +202,14 @@ class BarCodePlugin implements IPluginTempl {
     } = option;
     
     // 生成不包含文本的条形码 SVG
+    // 对于小尺寸，增加 width 参数以提高分辨率（JsBarcode 的 width 是线条宽度）
+    const barcodeWidth = barcodeOptions.width || 1;
+    // 如果条形码尺寸很小，增加线条宽度以提高清晰度
+    const adjustedWidth = minDimension < 100 ? Math.max(barcodeWidth, 2) : barcodeWidth;
+    
     JsBarcode(svg, option.value, {
       ...barcodeOptions,
+      width: adjustedWidth,
       displayValue: false, // 明确禁用 JsBarcode 的文本显示
     });
     
@@ -260,9 +285,15 @@ class BarCodePlugin implements IPluginTempl {
         canvas.width = originalWidth * scale;
         canvas.height = originalHeight * scale;
         
-        // 使用高质量缩放
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        // 使用高质量缩放（对于小尺寸图片，禁用平滑以获得更清晰的线条）
+        // 条形码需要清晰的线条，所以对于小尺寸使用 nearest-neighbor 缩放
+        const isSmallImage = canvas.width < 300 || canvas.height < 300;
+        if (isSmallImage) {
+          ctx.imageSmoothingEnabled = false; // 禁用平滑，获得更清晰的像素边界
+        } else {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+        }
         
         // 绘制图片到高分辨率 canvas
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
